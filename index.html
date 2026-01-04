@@ -247,6 +247,41 @@ body{
 }
 .volume-slider:hover{opacity:1;}
 
+/* ===== 30F 警告音コントロール ===== */
+.warn-control{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:12px;
+}
+
+.warn-control button{
+  background:rgba(255,255,255,.12);
+  border:none;
+  color:#fff;
+  width:22px;
+  height:22px;
+  border-radius:4px;
+  cursor:pointer;
+}
+
+.warn-control button:hover{
+  background:rgba(255,255,255,.22);
+}
+
+#warnValue{
+  min-width:48px;
+  text-align:center;
+  opacity:.85;
+}
+
+.warn-label{
+  font-size:12px;
+  opacity:.75;
+  margin-right:4px;
+  white-space:nowrap;
+}
+
 </style>
 </head>
 
@@ -303,7 +338,18 @@ body{
       <div id="z-tap" class="zone tap">タップ / 微ジャンプ (1–7f)</div>
       <div id="z-small" class="zone small">小ジャンプ (8–13f)</div>
       <div id="z-mid" class="zone mid">中ジャンプ (14–24f)</div>
-      <div id="z-large" class="zone large">大ジャンプ (25–35f)</div>
+      <div id="z-large" class="zone large">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span>大ジャンプ (25–35f)</span>
+
+          <div class="warn-control">
+            <span class="warn-label">30Fの通知音</span>
+            <button id="warnDown" title="周波数を下げる">↓</button>
+            <span id="warnValue">300Hz</span>
+            <button id="warnUp" title="周波数を上げる">↑</button>
+          </div>
+        </div>
+      </div>
       <div id="z-full" class="zone full">フルジャンプ (36f)</div>
     </div>
 
@@ -450,6 +496,38 @@ if (soundToggle) {
   });
 }
 
+/* ===== 30F 警告音設定 ===== */
+let warn30Freq = 300;        // 初期値
+const WARN_STEP = 50;
+const WARN_MIN  = 100;
+const WARN_MAX  = 1000;
+
+const warnUpBtn   = document.getElementById("warnUp");
+const warnDownBtn = document.getElementById("warnDown");
+const warnValueEl = document.getElementById("warnValue");
+
+function updateWarnLabel(){
+  if (warnValueEl) warnValueEl.textContent = `${warn30Freq}Hz`;
+}
+
+if (warnUpBtn) {
+  warnUpBtn.addEventListener("click", () => {
+    warn30Freq = Math.min(WARN_MAX, warn30Freq + WARN_STEP);
+    updateWarnLabel();
+    beep(warn30Freq, 0.05, 0.08); // プレビュー音
+  });
+}
+
+if (warnDownBtn) {
+  warnDownBtn.addEventListener("click", () => {
+    warn30Freq = Math.max(WARN_MIN, warn30Freq - WARN_STEP);
+    updateWarnLabel();
+    beep(warn30Freq, 0.05, 0.08); // プレビュー音
+  });
+}
+
+updateWarnLabel();
+
 /* ===== 状態 ===== */
 let holding = false;
 let startTime = 0;
@@ -488,7 +566,7 @@ function render(){
 
     // ★ 30F 到達時の追加音（1回だけ）
     if (fi === 30 && !played30f) {
-      beep(300, 0.08, 0.1);
+      beep(warn30Freq, 0.08, 0.1);
       played30f = true;
     }
 
