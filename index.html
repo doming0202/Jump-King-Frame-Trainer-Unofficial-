@@ -83,21 +83,48 @@ body{
   inset:0;
   display:flex;
 }
-.mz.tap   { width:calc(7/36*100%);  background:rgba(202,167,255,.18); }
-.mz.small { width:calc(6/36*100%);  background:rgba(106,183,255,.18); }
-.mz.mid   { width:calc(11/36*100%); background:rgba(125,255,156,.18); }
-.mz.large {
+
+/* 1–7 */
+.mz.tap{
+  width:calc(7/36*100%);
+  background:rgba(202,167,255,.18);
+}
+
+/* 8–13 */
+.mz.small{
+  width:calc(6/36*100%);
+  background:rgba(106,183,255,.18);
+}
+
+/* 14–24 */
+.mz.mid{
+  width:calc(11/36*100%);
+  background:rgba(125,255,156,.18);
+}
+
+/* 25–35（内部で正確に分割） */
+.mz.large{
   width:calc(11/36*100%);
   background: linear-gradient(
     90deg,
+
+    /* 25–29F : 通常大ジャンプ色 (5/11) */
     rgba(255,159,106,.18) 0%,
-    rgba(255,159,106,.18) 45%, /* 25–29F */
-    rgba(200,120,40,.28) 55%,  /* 30F */
-    rgba(220,90,40,.38) 75%,   /* 32F */
-    rgba(200,60,60,.48) 100%   /* 35F */
+    rgba(255,159,106,.18) calc(5/11*100%),
+
+    /* 30–35F : 警告ゾーン (6/11) */
+    rgba(200,120,40,.28) calc(5/11*100%),
+    rgba(220,90,40,.38) calc(8/11*100%),
+    rgba(200,60,60,.48) 100%
   );
 }
-.mz.full  { width:calc(1/36*100%);  background:rgba(255,106,106,.22); }
+
+/* 36 */
+.mz.full{
+  width:calc(1/36*100%);
+  background:rgba(255,106,106,.22);
+}
+
 
 /* マーカー */
 .marker{
@@ -569,4 +596,5 @@ updateAverage();
 </script>
 </body>
 </html>
+
 
