@@ -1,3 +1,7 @@
+## ▶ Play / 使用はこちら（ブラウザで即起動）
+
+👉 **https://doming0202.github.io/Jump-King-Frame-Trainer-Unofficial/**
+
 # Jump King Frame Trainer (Unofficial)
 
 This is an unofficial fan-made training tool for Jump King.  
