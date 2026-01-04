@@ -77,7 +77,6 @@ body{
   overflow:hidden;
 }
 
-/* ゾーン色 */
 .meter-zones{
   position:absolute;
   inset:0;
@@ -90,39 +89,39 @@ body{
   background:rgba(202,167,255,.18);
 }
 
-/* 8–13 */
+/* 8–14（13.x 含めて全部小） */
 .mz.small{
-  width:calc(6/36*100%);
+  width:calc(7/36*100%);
   background:rgba(106,183,255,.18);
 }
 
-/* 14–24 */
+/* 14–25（24.x 含めて中） */
 .mz.mid{
   width:calc(11/36*100%);
   background:rgba(125,255,156,.18);
 }
 
-/* 25–35（内部で正確に分割） */
+/* 25–30 大ジャンプ（通常） */
 .mz.large{
-  width:calc(11/36*100%);
-  background: linear-gradient(
-    90deg,
-
-    /* 25–29F : 通常大ジャンプ色 (5/11) */
-    rgba(255,159,106,.18) 0%,
-    rgba(255,159,106,.18) calc(5/11*100%),
-
-    /* 30–35F : 警告ゾーン (6/11) */
-    rgba(200,120,40,.28) calc(5/11*100%),
-    rgba(220,90,40,.38) calc(8/11*100%),
-    rgba(200,60,60,.48) 100%
-  );
+  width:calc(5/36*100%);
+  background:rgba(255,159,106,.18);
 }
 
-/* 36 */
-.mz.full{
-  width:calc(1/36*100%);
-  background:rgba(255,106,106,.22);
+.mz.danger{
+  position:absolute;
+  left:calc(30/36*100%);
+  width:calc(6/36*100%);
+  top:0;
+  bottom:0;
+
+  background: linear-gradient(
+    90deg,
+    rgba(180,110,60,.35) 0%,   /* 30 */
+    rgba(200,90,50,.45) 50%,  /* 33 */
+    rgba(220,60,60,.55) 100%  /* 36 */
+  );
+
+  pointer-events:none;
 }
 
 
@@ -289,6 +288,7 @@ body{
           <div class="mz mid"></div>
           <div class="mz large"></div>
           <div class="mz full"></div>
+          <div class="mz danger"></div>
         </div>
         <div id="marker" class="marker"></div>
         <div id="ticks" class="ticks"></div>
@@ -454,6 +454,8 @@ if (soundToggle) {
 let holding = false;
 let startTime = 0;
 let lastZone = null;
+let played30f = false;
+
 // === Gamepad state ===
 let padPrevPressed = false;
 
