@@ -436,6 +436,12 @@ function render(){
     const f = (performance.now() - startTime) / FRAME_MS;
     const fi = Math.max(0, Math.min(MAX, Math.round(f)));
 
+    // ★ 30F 到達時の追加音（1回だけ）
+    if(fi === 30 && !played30f){
+      beep(600, 0.08, 0.1);
+      played30f = true;
+    }
+    
     countEl.textContent = String(fi);
     markerEl.style.left = (Math.min(f / MAX, 1) * 100) + "%";
 
@@ -466,6 +472,7 @@ function startHold(label){
   startTime = performance.now();
   lastZone = null;
   inputEl.textContent = label;
+  played30f = false; // ★ ホールド開始時にリセット
 }
 
 function endHold(){
