@@ -425,7 +425,10 @@ function getZone(f){
   return ZONES.find(z => f >= z.min && f <= z.max) || null;
 }
 function clearZones(){
-  Object.values(zoneEls).forEach(el => el.classList.remove("active"));
+  Object.values(zoneEls).forEach(el => {
+    el.classList.remove("active");
+    el.classList.remove("warning");
+  });
 }
 function updateAverage(){
   if(!history.length){
@@ -440,16 +443,16 @@ function updateAverage(){
 function render(){
   pollGamepad();
 
-  if(holding){
-    const f = (performance.now() - startTime) / FRAME_MS;
+  if (holding) {
+    const f  = (performance.now() - startTime) / FRAME_MS;
     const fi = Math.max(0, Math.min(MAX, Math.round(f)));
 
     // ★ 30F 到達時の追加音（1回だけ）
-    if(fi === 30 && !played30f){
+    if (fi === 30 && !played30f) {
       beep(400, 0.08, 0.1);
       played30f = true;
     }
-    
+
     countEl.textContent = String(fi);
     markerEl.style.left = (Math.min(f / MAX, 1) * 100) + "%";
 
@@ -457,21 +460,23 @@ function render(){
     const z = getZone(fi);
     zoneNameEl.textContent = z ? z.name : "—";
 
-    // ★ null安全＋lastZone更新はzがある時だけ
-    if(z){
+    // ★ z がある時だけ処理
+    if (z) {
       zoneEls[z.k].classList.add("active");
 
       // ★ 30–35F は警告グラデーション
-      if(z.k === "big" && fi >= 30){
-        zoneEls[z.k].classList.add("warning");
+      if (z.k === "large" && fi >= 30) {
+        zoneEls.large.classList.add("warning");
       }
 
-      if(z.k !== lastZone){
+      // ★ ゾーン切り替え音
+      if (z.k !== lastZone) {
         sounds[z.k]?.();
         lastZone = z.k;
       }
     }
   }
+
   requestAnimationFrame(render);
 }
 requestAnimationFrame(render);
