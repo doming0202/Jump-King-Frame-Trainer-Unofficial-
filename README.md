@@ -21,12 +21,11 @@
 本プロジェクトは Jump King の開発元とは関係ありません。  
 Jump King および関連する名称・権利は、各権利者に帰属します。
 
+-------------------------------------------------------------------
+# Jump King Frame Trainer (Unofficial)
 
 This is an unofficial fan-made training tool for Jump King.  
 It visualizes jump charge timing based on a fixed 60fps logic.
-
--------------------------------------------------------------------
-# Jump King Frame Trainer (Unofficial)
 
 ## Features
 - Keyboard / Mouse / Gamepad supported
