@@ -86,7 +86,17 @@ body{
 .mz.tap   { width:calc(7/36*100%);  background:rgba(202,167,255,.18); }
 .mz.small { width:calc(6/36*100%);  background:rgba(106,183,255,.18); }
 .mz.mid   { width:calc(11/36*100%); background:rgba(125,255,156,.18); }
-.mz.large { width:calc(11/36*100%); background:rgba(255,159,106,.18); }
+.mz.large {
+  width:calc(11/36*100%);
+  background: linear-gradient(
+    90deg,
+    rgba(255,159,106,.18) 0%,
+    rgba(255,159,106,.18) 45%, /* 25–29F */
+    rgba(200,120,40,.28) 55%,  /* 30F */
+    rgba(220,90,40,.38) 75%,   /* 32F */
+    rgba(200,60,60,.48) 100%   /* 35F */
+  );
+}
 .mz.full  { width:calc(1/36*100%);  background:rgba(255,106,106,.22); }
 
 /* マーカー */
