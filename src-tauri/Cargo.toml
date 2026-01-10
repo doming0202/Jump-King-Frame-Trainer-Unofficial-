@@ -1,0 +1,12 @@
+[package]
+name = "jump-frame-trainer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+rdev = "0.5"
+serde = { version = "1", features = ["derive"] }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }

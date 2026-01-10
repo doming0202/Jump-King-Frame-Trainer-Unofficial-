@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Jump Frame Trainer (Unofficial)</title>
+
+<style>
+/* ===== ベース ===== */
+body{
+  background:#0e0e0e;
+  color:#fff;
+  font-family:system-ui,sans-serif;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  height:100vh;
+  margin:0;
+  user-select:none;
+}
+
+/* ===== パネル ===== */
+.box{
+  position:relative;
+  width:min(96vw, 880px);
+  height:min(96vh, 800px);
+  padding:32px 36px;
+  border-radius:16px;
+  background: rgba(40, 40, 40, 0.45);
+  box-shadow:0 0 0 1px rgba(255,255,255,0.15);
+  box-sizing:border-box;
+
+  display:flex;
+  flex-direction:column;
+}
+
+/* ===== メイン領域 ===== */
+.main{
+  display:flex;
+  flex-direction:column;
+  flex:1;
+}
+
+/* ===== 表示 ===== */
+.title{text-align:center;font-size:18px;opacity:.85;}
+.input{text-align:center;font-size:14px;opacity:.7;margin-bottom:4px;}
+.count{text-align:center;font-size:72px;font-weight:700;}
+.avg{text-align:center;font-size:18px;opacity:.85;margin-top:2px;}
+.zone-name{text-align:center;font-size:15px;margin-bottom:10px;}
+
+/* ===== サウンド ===== */
+.sound-toggle{
+  font-size:22px;
+  cursor:pointer;
+  opacity:.8;
+}
+
+.sound-toggle:hover{opacity:1;transform:scale(1.1);}
+.sound-toggle.muted{opacity:.45;}
+
+.input-hint{
+  margin-top:6px;
+  text-align:center;
+  font-size:13px;
+  color:rgba(255,255,255,.7);
+  letter-spacing:.02em;
+}
+
+/* ===== メーター ===== */
+.meter-wrap{margin:10px 0 18px;}
+
+.meter{
+  position:relative;
+  height:26px;
+  border-radius:12px;
+  background:rgba(255,255,255,.08);
+  overflow:hidden;
+}
+
+.meter-zones{
+  position:absolute;
+  inset:0;
+  display:flex;
+}
+
+/* 1–7 */
+.mz.tap{
+  width:calc(7/36*100%);
+  background:rgba(202,167,255,.18);
+}
+
+/* 8–14（13.x 含めて全部小） */
+.mz.small{
+  width:calc(7/36*100%);
+  background:rgba(106,183,255,.18);
+}
+
+/* 14–25（24.x 含めて中） */
+.mz.mid{
+  width:calc(11/36*100%);
+  background:rgba(125,255,156,.18);
+}
+
+/* 25–30 大ジャンプ（通常） */
+.mz.large{
+  width:calc(5/36*100%);
+  background:rgba(255,159,106,.18);
+}
+
+.mz.danger{
+  position:absolute;
+  left:calc(30/36*100%);
+  width:calc(6/36*100%);
+  top:0;
+  bottom:0;
+
+  background: linear-gradient(
+    90deg,
+    rgba(180,110,60,.35) 0%,   /* 30 */
+    rgba(200,90,50,.45) 50%,  /* 33 */
+    rgba(220,60,60,.55) 100%  /* 36 */
+  );
+
+  pointer-events:none;
+}
+
+
+/* マーカー */
+.marker{
+  position:absolute;
+  top:0; bottom:0;
+  width:3px;
+  background:#fff;
+  box-shadow:0 0 0 2px rgba(0,0,0,.35);
+  z-index:3;
+}
+
+/* 目盛り */
+.ticks{
+  position:absolute;
+  inset:0;
+  display:grid;
+  grid-template-columns:repeat(36,1fr);
+  pointer-events:none;
+  z-index:2;
+}
+.tick{position:relative;}
+.tick::after{
+  content:"";
+  position:absolute;
+  right:0; bottom:0;
+  width:1px; height:45%;
+  background:rgba(255,255,255,.22);
+}
+.tick.major::after{
+  height:80%;
+  background:rgba(255,255,255,.55);
+}
+
+.labels{
+  display:flex;
+  justify-content:space-between;
+  font-size:12px;
+  opacity:.55;
+  margin-top:4px;
+}
+
+/* ===== ゾーン一覧 ===== */
+.zones{display:flex;flex-direction:column;gap:6px;}
+.zone{
+  padding:8px 12px;
+  border-radius:8px;
+  opacity:.35;
+}
+.zone.active{
+  opacity:1;
+  box-shadow:0 0 0 2px currentColor;
+}
+
+.tap{color:#caa7ff;background:rgba(202,167,255,.18);}
+.small{color:#6ab7ff;background:rgba(106,183,255,.18);}
+.mid{color:#7dff9c;background:rgba(125,255,156,.18);}
+.large{color:#ff9f6a;background:rgba(255,159,106,.18);}
+.large.warning{
+  background: linear-gradient(
+    90deg,
+    rgba(200, 120, 40, 0.35) 0%,
+    rgba(220, 90, 40, 0.45) 50%,
+    rgba(200, 60, 60, 0.55) 100%
+  );
+}
+.full{color:#ff6a6a;background:rgba(255,106,106,.22);}
+
+/* ===== 注釈 ===== */
+.note{
+  margin-top:20px;
+  font-size:12px;
+  line-height:1.5;
+  text-align:center;
+  color:rgba(255,255,255,.55);
+}
+
+.notice{
+  margin-top:14px;
+  font-size:12px;
+  text-align:center;
+  color:rgba(255,255,255,.55);
+}
+.notice details summary{
+  cursor:pointer;
+  font-size:11px;
+  opacity:.6;
+}
+.notice details summary:hover{opacity:.9;}
+.notice details p{
+  margin:6px 0;
+  font-size:11px;
+  opacity:.55;
+}
+
+/* ===== フッター ===== */
+.disclaimer{
+  margin-top:18px;
+  padding-top:14px;
+  font-size:12px;
+  color:rgba(255,255,255,.45);
+  text-align:center;
+  border-top:1px solid rgba(255,255,255,.08);
+}
+
+/* ===== 音量スライダー ===== */
+.sound-control{
+  position:absolute;
+  top:16px;
+  right:18px;
+
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  gap:8px;
+}
+
+.volume-slider{
+  width:100px;
+  accent-color:#bbb;
+  opacity:.85;
+}
+.volume-slider:hover{opacity:1;}
+
+/* ===== 30F 警告音コントロール ===== */
+.warn-control{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:12px;
+}
+
+.warn-control button{
+  background:rgba(255,255,255,.12);
+  border:none;
+  color:#fff;
+  width:22px;
+  height:22px;
+  border-radius:4px;
+  cursor:pointer;
+}
+
+.warn-control button:hover{
+  background:rgba(255,255,255,.22);
+}
+
+#warnValue{
+  min-width:48px;
+  text-align:center;
+  opacity:.85;
+}
+
+.warn-label{
+  font-size:12px;
+  opacity:.75;
+  margin-right:4px;
+  white-space:nowrap;
+}
+
+</style>
+</head>
+
+<body>
+<div class="box">
+
+  <div class="sound-control">
+    <div id="soundToggle" class="sound-toggle" title="サウンド切替">🔊</div>
+
+    <!-- 音量スライダー（0–200%） -->
+    <input
+      id="volumeSlider"
+      class="volume-slider"
+      type="range"
+      min="0"
+      max="200"
+      value="100"
+      step="1"
+      title="音量"
+    />
+  </div>
+
+
+  <div class="main">
+    <div class="title">Jump King Frame Trainer (Unofficial)</div>
+    <div id="input" class="input">入力待ち…（キー / パッド / マウス）</div>
+    <div class="input-hint">
+      ⌨️ キー / 🎮 コントローラー / 🖱️ マウス左クリック対応
+    </div>
+    <div id="count" class="count">0</div>
+    <div id="avg" class="avg">平均（直近5回）：—</div>
+    <div id="zoneName" class="zone-name">—</div>
+
+    <div class="meter-wrap">
+      <div class="meter">
+        <div class="meter-zones">
+          <div class="mz tap"></div>
+          <div class="mz small"></div>
+          <div class="mz mid"></div>
+          <div class="mz large"></div>
+          <div class="mz full"></div>
+          <div class="mz danger"></div>
+        </div>
+        <div id="marker" class="marker"></div>
+        <div id="ticks" class="ticks"></div>
+      </div>
+      <div class="labels">
+        <span>0</span><span>6</span><span>12</span>
+        <span>18</span><span>24</span><span>30</span><span>36</span>
+      </div>
+    </div>
+
+    <div class="zones">
+      <div id="z-tap" class="zone tap">タップ / 微ジャンプ (1–7f)</div>
+      <div id="z-small" class="zone small">小ジャンプ (8–13f)</div>
+      <div id="z-mid" class="zone mid">中ジャンプ (14–24f)</div>
+      <div id="z-large" class="zone large">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span>大ジャンプ (25–35f)</span>
+
+          <div class="warn-control">
+            <span class="warn-label">30Fの通知音</span>
+            <button id="warnDown" title="周波数を下げる">↓</button>
+            <span id="warnValue">300Hz</span>
+            <button id="warnUp" title="周波数を上げる">↑</button>
+          </div>
+        </div>
+      </div>
+      <div id="z-full" class="zone full">フルジャンプ (36f)</div>
+    </div>
+
+    <div class="note">
+      ※ 表示されているジャンプ区分は目安です。<br>
+      実際のプレイではフレーム数そのものを意識してください。
+    </div>
+
+    <div class="notice">
+      ℹ️ 表示の目盛りは環境によりズレて見える場合があります（数値は正確です）
+      <details>
+        <summary>詳細を見る</summary>
+        <p>本ツールは Jump King の挙動に合わせ、60fps基準で計測しています。</p>
+        <p>高リフレッシュレート環境に対応させたため、表示のみズレる場合があります。</p>
+      </details>
+    </div>
+  </div>
+
+  <!-- 文章は削らずそのまま -->
+  <div class="disclaimer">
+    <p>
+      ※ 本ツールは <strong>非公式</strong> のファンメイドトレーニングツールです。<br>
+      Jump King および関連する名称・権利は、各権利者に帰属します。
+    </p>
+    <p>
+      This is an <strong>unofficial</strong> fan-made training tool.<br>
+      Jump King and related names are trademarks or registered trademarks of their respective owners.<br>
+      Made by ChatGPT
+    </p>
+  </div>
+
+</div>
+
+<script>
+
+if (window.__TAURI__?.event) {
+  window.__TAURI__.event.listen("hold-start", (e) => {
+    startHold(`global:${e.payload}`);
+  });
+
+  window.__TAURI__.event.listen("hold-end", () => {
+    endHold();
+  });
+}
+
+/* ===== ロジック（完全修正版） ===== */
+const LOGIC_FPS = 60;
+const FRAME_MS  = 1000 / LOGIC_FPS;
+const MAX = 36;
+
+const ZONES = [
+  {k:"tap",   name:"タップ / 微ジャンプ", min:1,  max:7 },
+  {k:"small", name:"小ジャンプ",           min:8,  max:13},
+  {k:"mid",   name:"中ジャンプ",           min:14, max:24},
+  {k:"large", name:"大ジャンプ",           min:25, max:35},
+  {k:"full",  name:"フルジャンプ",         min:36, max:36},
+];
+
+const history = []; // 直近5回
+const PAD_JUMP_BUTTONS = [0]; // Gamepad jump buttons (A button)
+
+/* ===== DOM ===== */
+const countEl    = document.getElementById("count");
+const avgEl      = document.getElementById("avg");
+const zoneNameEl = document.getElementById("zoneName");
+const markerEl   = document.getElementById("marker");
+const inputEl    = document.getElementById("input");
+const ticksEl    = document.getElementById("ticks");
+const soundToggle= document.getElementById("soundToggle");
+const volumeSlider = document.getElementById("volumeSlider");
+if(volumeSlider){
+  volumeSlider.addEventListener("input", () => {
+    masterGain = Number(volumeSlider.value) / 100; // 0.0 – 2.0
+    if(gainNode) gainNode.gain.value = masterGain;
+  });
+}
+
+const zoneEls = {
+  tap:   document.getElementById("z-tap"),
+  small: document.getElementById("z-small"),
+  mid:   document.getElementById("z-mid"),
+  large: document.getElementById("z-large"),
+  full:  document.getElementById("z-full"),
+};
+
+/* ===== 目盛り生成（重複防止） ===== */
+if (ticksEl && ticksEl.childElementCount === 0) {
+  for(let i=1;i<=MAX;i++){
+    const d = document.createElement("div");
+    d.className = "tick" + (i % 6 === 0 ? " major" : "");
+    ticksEl.appendChild(d);
+  }
+}
+
+let masterGain = 1.0;
+let gainNode = null;
+
+/* ===== Audio ===== */
+let soundEnabled = true;
+const AC = window.AudioContext || window.webkitAudioContext;
+const audioCtx = AC ? new AC() : null;
+
+function ensureAudioUnlocked(){
+  if(!audioCtx) return;
+  if(audioCtx.state === "suspended") audioCtx.resume();
+}
+
+function beep(freq, dur, gain = 0.08){
+  if(!audioCtx || !soundEnabled) return;
+
+  // ※ ここで resume だけしても「ユーザー操作外」だとブロックされることがあるため
+  // startHold/サウンドボタン内でも必ず unlock する
+  if(audioCtx.state === "suspended") return;
+
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.frequency.value = freq;
+  g.gain.value = gain;
+
+  o.connect(g);
+  g.connect(gainNode || audioCtx.destination);
+
+  o.start();
+  o.stop(audioCtx.currentTime + dur);
+}
+
+const sounds = {
+  tap:   () => beep(1200, 0.04),
+  small: () => beep(950,  0.05),
+  mid:   () => { beep(950,0.05); setTimeout(()=>beep(1050,0.05), 80); },
+  large: () => beep(180,  0.12),
+  full:  () => beep(90,   0.18, 0.12),
+};
+
+if(audioCtx){
+  gainNode = audioCtx.createGain();
+  gainNode.gain.value = masterGain;
+  gainNode.connect(audioCtx.destination);
+}
+
+/* ===== サウンドトグル ===== */
+if (soundToggle) {
+  soundToggle.addEventListener("click", () => {
+    soundEnabled = !soundEnabled;
+    soundToggle.textContent = soundEnabled ? "🔊" : "🔇";
+    soundToggle.classList.toggle("muted", !soundEnabled);
+
+    // クリックはユーザー操作なので、ここで確実に解除できる
+    ensureAudioUnlocked();
+
+    // ★ 音量スライダーと整合させる
+    if (gainNode) {
+      gainNode.gain.value = soundEnabled ? masterGain : 0;
+    }
+  });
+}
+
+/* ===== 30F 警告音設定 ===== */
+let warn30Freq = 300;        // 初期値
+const WARN_STEP = 50;
+const WARN_MIN  = 100;
+const WARN_MAX  = 1000;
+
+const warnUpBtn   = document.getElementById("warnUp");
+const warnDownBtn = document.getElementById("warnDown");
+const warnValueEl = document.getElementById("warnValue");
+
+function updateWarnLabel(){
+  if (warnValueEl) warnValueEl.textContent = `${warn30Freq}Hz`;
+}
+
+if (warnUpBtn) {
+  warnUpBtn.addEventListener("click", () => {
+    warn30Freq = Math.min(WARN_MAX, warn30Freq + WARN_STEP);
+    updateWarnLabel();
+    beep(warn30Freq, 0.05, 0.08); // プレビュー音
+  });
+}
+
+if (warnDownBtn) {
+  warnDownBtn.addEventListener("click", () => {
+    warn30Freq = Math.max(WARN_MIN, warn30Freq - WARN_STEP);
+    updateWarnLabel();
+    beep(warn30Freq, 0.05, 0.08); // プレビュー音
+  });
+}
+
+updateWarnLabel();
+
+/* ===== 状態 ===== */
+let holding = false;
+let startTime = 0;
+let lastZone = null;
+let played30f = false;
+
+// === Gamepad state ===
+let padPrevPressed = false;
+
+/* ===== utils ===== */
+function getZone(f){
+  return ZONES.find(z => f >= z.min && f <= z.max) || null;
+}
+function clearZones(){
+  Object.values(zoneEls).forEach(el => {
+    el.classList.remove("active");
+    el.classList.remove("warning");
+  });
+}
+function updateAverage(){
+  if(!history.length){
+    avgEl.textContent = "平均（直近5回）：—";
+    return;
+  }
+  const avg = (history.reduce((a,b)=>a+b,0) / history.length).toFixed(1);
+  avgEl.textContent = `平均（直近5回）：${avg} f`;
+}
+
+/* ===== 描画 ===== */
+function render(){
+  pollGamepad();
+
+  if (holding) {
+    const f  = (performance.now() - startTime) / FRAME_MS;
+    const fi = Math.max(0, Math.min(MAX, Math.round(f)));
+
+    // ★ 30F 到達時の追加音（1回だけ）
+    if (fi === 30 && !played30f) {
+      beep(warn30Freq, 0.08, 0.1);
+      played30f = true;
+    }
+
+    countEl.textContent = String(fi);
+    markerEl.style.left = (Math.min(f / MAX, 1) * 100) + "%";
+
+    clearZones();
+    const z = getZone(fi);
+    zoneNameEl.textContent = z ? z.name : "—";
+
+    // ★ z がある時だけ処理
+    if (z) {
+      zoneEls[z.k].classList.add("active");
+
+      // ★ 30–35F は警告グラデーション
+      if (z.k === "large" && fi >= 30) {
+        zoneEls.large.classList.add("warning");
+      }
+
+      // ★ ゾーン切り替え音
+      if (z.k !== lastZone) {
+        sounds[z.k]?.();
+        lastZone = z.k;
+      }
+    }
+  }
+
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+
+/* ===== 入力 ===== */
+function startHold(label){
+  // ここはユーザー操作イベント内から呼ばれるので、解除できる
+  ensureAudioUnlocked();
+
+  holding = true;
+  startTime = performance.now();
+  lastZone = null;
+  inputEl.textContent = label;
+  played30f = false; // ★ ホールド開始時にリセット
+}
+
+function endHold(){
+  if(!holding) return;
+
+  const fi = Math.max(0, Math.min(MAX, Math.round((performance.now() - startTime) / FRAME_MS)));
+  holding = false;
+
+  history.push(fi);
+  if(history.length > 5) history.shift();
+  updateAverage();
+
+  // 表示を落ち着かせたい場合はここで戻してもOK（今は保持）
+  // inputEl.textContent = "入力待ち…（キー / パッド / マウス）";
+}
+
+/* キー */
+window.addEventListener("keydown", (e) => {
+  if(holding) return;
+  if(e.repeat) return;
+  startHold(`キー: ${e.code}`);
+});
+window.addEventListener("keyup", () => {
+  if(holding) endHold();
+});
+
+/* マウス */
+window.addEventListener("mousedown", (e) => {
+  if(e.button !== 0) return;
+  if(holding) return;
+  startHold("マウス: 左クリック");
+});
+window.addEventListener("mouseup", (e) => {
+  if(e.button !== 0) return;
+  if(holding) endHold();
+});
+
+window.addEventListener("gamepadconnected", () => {
+  console.log("Gamepad connected");
+});
+
+window.addEventListener("gamepaddisconnected", () => {
+  padPrevPressed = false;
+});
+
+function pollGamepad() {
+  const pads = navigator.getGamepads?.();
+  if (!pads) return;
+
+  const pad = pads[0];
+  if (!pad) return;
+
+  const pressed = pad.buttons.some(btn => btn?.pressed);
+
+  if (pressed && !padPrevPressed) {
+    startHold("pad");
+  }
+  if (!pressed && padPrevPressed) {
+    endHold("pad");
+  }
+
+  padPrevPressed = pressed;
+}
+
+updateAverage();
+</script>
+</body>
+</html>
