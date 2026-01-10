@@ -421,9 +421,12 @@ const ticksEl    = document.getElementById("ticks");
 const soundToggle= document.getElementById("soundToggle");
 const volumeSlider = document.getElementById("volumeSlider");
 if(volumeSlider){
+  volumeSlider.value = loadNumber("jft_volume_slider", Number(volumeSlider.value));
   volumeSlider.addEventListener("input", () => {
     masterGain = Number(volumeSlider.value) / 100; // 0.0 – 2.0
     if(gainNode) gainNode.gain.value = masterGain;
+    saveNumber("jft_volume", masterGain);
+    saveNumber("jft_volume_slider", Number(volumeSlider.value));
   });
 }
 
@@ -444,7 +447,7 @@ if (ticksEl && ticksEl.childElementCount === 0) {
   }
 }
 
-let masterGain = 1.0;
+let masterGain = loadNumber("jft_volume", 1.0);
 let gainNode = null;
 
 /* ===== Audio ===== */
@@ -508,7 +511,7 @@ if (soundToggle) {
 }
 
 /* ===== 30F 警告音設定 ===== */
-let warn30Freq = 300;        // 初期値
+let warn30Freq = loadNumber("jft_warn30_hz", 300);        // 初期値
 const WARN_STEP = 50;
 const WARN_MIN  = 100;
 const WARN_MAX  = 1000;
@@ -526,6 +529,7 @@ if (warnUpBtn) {
     warn30Freq = Math.min(WARN_MAX, warn30Freq + WARN_STEP);
     updateWarnLabel();
     beep(warn30Freq, 0.05, 0.08); // プレビュー音
+    saveNumber("jft_warn30_hz", warn30Freq);
   });
 }
 
@@ -534,6 +538,7 @@ if (warnDownBtn) {
     warn30Freq = Math.max(WARN_MIN, warn30Freq - WARN_STEP);
     updateWarnLabel();
     beep(warn30Freq, 0.05, 0.08); // プレビュー音
+    saveNumber("jft_warn30_hz", warn30Freq);
   });
 }
 
@@ -549,6 +554,13 @@ let played30f = false;
 let padPrevPressed = false;
 
 /* ===== utils ===== */
+function loadNumber(key, fallback){
+  const v = Number(localStorage.getItem(key));
+  return Number.isFinite(v) ? v : fallback;
+}
+function saveNumber(key, value){
+  localStorage.setItem(key, String(value));
+}
 function getZone(f){
   return ZONES.find(z => f >= z.min && f <= z.max) || null;
 }
