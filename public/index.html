@@ -637,11 +637,11 @@ function endHold(){
   if(history.length > 5) history.shift();
   updateAverage();
 
-  if (window.__TAURI__?.event) {
-    window.__TAURI__.event.emit("hud-update", { frame: fi });
+  if (window.__TAURI__?.core?.invoke) {
+    window.__TAURI__.core.invoke("hud_update", { frame: fi });
   }
 }
- 
+
 /* キー */
 window.addEventListener("keydown", (e) => {
   if(holding) return;

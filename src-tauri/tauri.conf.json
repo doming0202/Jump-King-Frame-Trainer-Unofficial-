@@ -1,5 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
+
   "productName": "jump-frame-trainer",
   "version": "0.1.0",
   "identifier": "com.domin.jump-frame-trainer",
@@ -11,43 +12,54 @@
   "app": {
     "withGlobalTauri": true,
 
+    "security": {
+      "capabilities": [
+        {
+          "identifier": "hud",
+          "windows": ["hud"],
+          "permissions": [
+            "core:event:allow-listen"
+          ]
+        }
+      ]
+    },
+
     "windows": [
       {
         "label": "main",
         "title": "Jump Frame Trainer",
         "url": "index.html",
+
         "width": 900,
         "height": 720,
+        "resizable": true,
         "visible": true
       },
+
       {
         "label": "hud",
         "title": "Jump Frame HUD",
         "url": "hud.html",
+
         "decorations": false,
         "transparent": true,
+
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "focusable": false,
         "resizable": false,
+
         "width": 420,
         "height": 120,
         "x": 740,
         "y": 20,
+
         "visible": true
       }
-    ],
+    ]
+  },
 
-    "security": {
-      "capabilities": [
-        {
-          "identifier": "event-emit",
-          "permissions": [
-            "core:event:allow-emit",
-            "core:event:allow-listen"
-          ]
-        }
-      ]
-    }
+  "bundle": {
+    "active": true
   }
 }
