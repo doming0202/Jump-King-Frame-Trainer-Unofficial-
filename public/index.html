@@ -285,9 +285,8 @@ body{
 /* ===== 左サイド HUDコントロール ===== */
 .hud-controls {
   position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
+  left: 32px;
+  top: 32px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -489,7 +488,6 @@ if (ticksEl && ticksEl.childElementCount === 0) {
 
 let masterGain = loadNumber("jft_volume", 1.0);
 let gainNode = null;
-let hudVisible = loadNumber("jft_hud_visible", 1) === 1;
 let soundMuted = loadNumber("jft_sound_muted", 0) === 1;
 
 /* ===== Audio ===== */
@@ -623,30 +621,13 @@ function saveNumber(key, value){
   localStorage.setItem(key, String(value));
 }
 
-function applyHudVisible() {
-  const mainEl = document.querySelector(".main");
-  const zonesEl = document.querySelector(".zones");
-  const meterWrapEl = document.querySelector(".meter-wrap");
-
-  if (mainEl) mainEl.style.display = hudVisible ? "" : "none";
-  if (zonesEl) zonesEl.style.display = hudVisible ? "" : "none";
-  if (meterWrapEl) meterWrapEl.style.display = hudVisible ? "" : "none";
-
-  if (hudToggle) {
-    hudToggle.classList.toggle("inactive", !hudVisible);
-    hudToggle.textContent = hudVisible ? "👁️" : "🚫";
-  }
-}
-
 if (hudToggle) {
   hudToggle.addEventListener("click", () => {
-    hudVisible = !hudVisible;
-    saveNumber("jft_hud_visible", hudVisible ? 1 : 0);
-    applyHudVisible();
+    if (window.__TAURI__?.core?.invoke) {
+      window.__TAURI__.core.invoke("hud_toggle");
+    }
   });
 }
-
-applyHudVisible();
 function getZone(f){
   return ZONES.find(z => f >= z.min && f <= z.max) || null;
 }
