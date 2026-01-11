@@ -11,7 +11,7 @@ use serde::Serialize;
 
 use rdev::{listen, EventType, Key};
 use gilrs::{Gilrs, EventType as GilEvent, Button as GilButton};
-use rodio::{OutputStream, OutputStreamHandle, Sink, source::SineWave, Source};
+use rodio::{OutputStream, Sink, source::SineWave, Source};
 
 // ===============================
 // HUD Payload
@@ -73,19 +73,6 @@ enum AudioCmd {
     Beep { freq: u32, ms: u64 },
 }
 
-struct AudioState {
-    _stream: OutputStream,
-    handle: OutputStreamHandle,
-}
-
-impl AudioState {
-    fn new() -> Self {
-        let (_stream, handle) =
-            OutputStream::try_default().expect("failed to init audio output");
-        Self { _stream, handle }
-    }
-}
-
 // ===============================
 // Sound Helper（JSと同思想）
 // ===============================
@@ -127,15 +114,15 @@ fn emit_update(app: &AppHandle, frame: u32) {
 fn start_frame_loop(
     app: AppHandle,
     state: Arc<Mutex<HoldState>>,
-    audio: Arc<AudioState>,
+    audio_tx: mpsc::Sender<AudioCmd>,
 ) {
     thread::spawn(move || {
+        let audio_tx = audio_tx.clone(); // ★これが重要
         const FRAME_MS: f64 = 1000.0 / 60.0;
 
         loop {
             {
                 let mut s = state.lock().unwrap();
-
                 if s.holding {
                     if let Some(start) = s.start {
                         let elapsed_ms =
@@ -147,23 +134,32 @@ fn start_frame_loop(
                             s.last_frame = frame;
                             let frame_u = frame as u32;
 
-                            // HUD progress
                             emit_progress(&app, frame_u);
 
-                            // ===== Zone 音（変化時のみ）=====
                             let zone = get_zone(frame_u);
                             if zone != s.last_zone {
                                 match zone {
-                                    Zone::Tap   => audio_tx.send(AudioCmd::Beep { freq: 220, ms: 40 }).ok(),
-                                    Zone::Small => audio_tx.send(AudioCmd::Beep { freq: 260, ms: 40 }).ok(),
-                                    Zone::Mid   => audio_tx.send(AudioCmd::Beep { freq: 300, ms: 40 }).ok(),
-                                    Zone::Large => audio_tx.send(AudioCmd::Beep { freq: 340, ms: 40 }).ok(),
-                                    Zone::Full  => audio_tx.send(AudioCmd::Beep { freq: 420, ms: 60 }).ok(),
+                                    Zone::Tap => {
+                                        audio_tx.send(AudioCmd::Beep { freq: 220, ms: 40 }).ok();
+                                    }
+                                    Zone::Small => {
+                                        audio_tx.send(AudioCmd::Beep { freq: 260, ms: 40 }).ok();
+                                    }
+                                    Zone::Mid => {
+                                        audio_tx.send(AudioCmd::Beep { freq: 300, ms: 40 }).ok();
+                                    }
+                                    Zone::Large => {
+                                        audio_tx.send(AudioCmd::Beep { freq: 340, ms: 40 }).ok();
+                                    }
+                                    Zone::Full => {
+                                        audio_tx.send(AudioCmd::Beep { freq: 420, ms: 60 }).ok();
+                                    }
+                                    Zone::None => {}
                                 }
+
                                 s.last_zone = zone;
                             }
 
-                            // ===== 30F 警告音（1回のみ）=====
                             if frame_u >= 30 && !s.played_30f {
                                 audio_tx.send(AudioCmd::Beep { freq: 350, ms: 80 }).ok();
                                 s.played_30f = true;
@@ -172,8 +168,6 @@ fn start_frame_loop(
                     }
                 }
             }
-
-            // ≒240Hz（精度と負荷のバランス）
             thread::sleep(Duration::from_millis(4));
         }
     });
@@ -188,6 +182,7 @@ fn start_keyboard_listener(
     audio_tx: mpsc::Sender<AudioCmd>,
 ) {
     thread::spawn(move || {
+        let audio_tx = audio_tx.clone();
         let callback = move |event: rdev::Event| {
             match event.event_type {
                 EventType::KeyPress(Key::Space) => {
@@ -238,6 +233,7 @@ fn start_gamepad_listener(
     audio_tx: mpsc::Sender<AudioCmd>,
 ) {
     thread::spawn(move || {
+        let audio_tx = audio_tx.clone();
         let mut gilrs = Gilrs::new().unwrap();
 
         loop {
