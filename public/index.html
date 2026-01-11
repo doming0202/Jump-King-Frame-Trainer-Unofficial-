@@ -540,6 +540,7 @@ let holding = false;
 let startTime = 0;
 let lastZone = null;
 let played30f = false;
+let lastHudFrame = -1;
 
 // === Gamepad state ===
 let padPrevPressed = false;
@@ -602,6 +603,15 @@ function render(){
         lastZone = z.k; 
       }
     }
+
+    // holding中のみ進捗を送るためのガードが必要
+    if (holding && fi !== lastHudFrame) {
+      lastHudFrame = fi;
+
+      if (window.__TAURI__?.core?.invoke) {
+        window.__TAURI__.core.invoke("hud_progress", { frame: fi });
+      }
+    }
   }
 
   requestAnimationFrame(render);
@@ -632,6 +642,8 @@ function endHold(){
   );
 
   holding = false;
+  // 次回ホールド時に初回フレームを送るためのリセットが必要
+  lastHudFrame = -1;
 
   history.push(fi);
   if(history.length > 5) history.shift();
