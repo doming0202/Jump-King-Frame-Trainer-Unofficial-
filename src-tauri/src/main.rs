@@ -6,7 +6,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, State, Manager};
 use serde::Serialize;
 
 use rdev::{listen, EventType, Key};
@@ -19,6 +19,14 @@ use rodio::{OutputStream, Sink, source::SineWave, Source};
 #[derive(Serialize, Clone)]
 struct Payload {
     frame: u32,
+}
+
+// ===============================
+// HUD Control State
+// ===============================
+struct HudControlState {
+    visible: bool,
+    muted: bool,
 }
 
 // ===============================
@@ -114,6 +122,7 @@ fn emit_update(app: &AppHandle, frame: u32) {
 fn start_frame_loop(
     app: AppHandle,
     state: Arc<Mutex<HoldState>>,
+    hud_state: Arc<Mutex<HudControlState>>,
     audio_tx: mpsc::Sender<AudioCmd>,
 ) {
     thread::spawn(move || {
@@ -138,6 +147,10 @@ fn start_frame_loop(
 
                             let zone = get_zone(frame_u);
                             if zone != s.last_zone {
+                                if hud_state.lock().unwrap().muted {
+                                    s.last_zone = zone;
+                                    continue;
+                                }
                                 match zone {
                                     Zone::Tap => {
                                         audio_tx.send(AudioCmd::Beep { freq: 220, ms: 40 }).ok();
@@ -161,6 +174,10 @@ fn start_frame_loop(
                             }
 
                             if frame_u >= 30 && !s.played_30f {
+                                if hud_state.lock().unwrap().muted {
+                                    s.played_30f = true;
+                                    continue;
+                                }
                                 audio_tx.send(AudioCmd::Beep { freq: 350, ms: 80 }).ok();
                                 s.played_30f = true;
                             }
@@ -179,6 +196,7 @@ fn start_frame_loop(
 fn start_keyboard_listener(
     app: AppHandle,
     state: Arc<Mutex<HoldState>>,
+    hud_state: Arc<Mutex<HudControlState>>,
     audio_tx: mpsc::Sender<AudioCmd>,
 ) {
     thread::spawn(move || {
@@ -206,7 +224,9 @@ fn start_keyboard_listener(
                                 (elapsed_ms / (1000.0 / 60.0)).round() as u32;
 
                             emit_update(&app, frame);
-                            audio_tx.send(AudioCmd::Beep { freq: 600, ms: 100 }).ok(); // final音
+                            if !hud_state.lock().unwrap().muted {
+                                audio_tx.send(AudioCmd::Beep { freq: 600, ms: 100 }).ok(); // final音
+                            }
                         }
 
                         s.holding = false;
@@ -230,6 +250,7 @@ fn start_keyboard_listener(
 fn start_gamepad_listener(
     app: AppHandle,
     state: Arc<Mutex<HoldState>>,
+    hud_state: Arc<Mutex<HudControlState>>,
     audio_tx: mpsc::Sender<AudioCmd>,
 ) {
     thread::spawn(move || {
@@ -260,7 +281,9 @@ fn start_gamepad_listener(
                                     (elapsed_ms / (1000.0 / 60.0)).round() as u32;
 
                                 emit_update(&app, frame);
-                                audio_tx.send(AudioCmd::Beep { freq: 600, ms: 100 }).ok(); // final音
+                                if !hud_state.lock().unwrap().muted {
+                                    audio_tx.send(AudioCmd::Beep { freq: 600, ms: 100 }).ok(); // final音
+                                }
                             }
 
                             s.holding = false;
@@ -280,22 +303,52 @@ fn start_gamepad_listener(
 }
 
 // ===============================
+// HUD Commands
+// ===============================
+#[tauri::command]
+fn hud_toggle(app: tauri::AppHandle, state: State<Arc<Mutex<HudControlState>>>) {
+    let mut s = state.lock().unwrap();
+    s.visible = !s.visible;
+
+    if let Some(hud) = app.get_webview_window("hud") {
+        if s.visible {
+            let _ = hud.show();
+        } else {
+            let _ = hud.hide();
+        }
+    }
+}
+
+#[tauri::command]
+fn hud_mute_toggle(state: State<Arc<Mutex<HudControlState>>>) {
+    let mut s = state.lock().unwrap();
+    s.muted = !s.muted;
+}
+
+// ===============================
 // Main
 // ===============================
 fn main() {
+    let hud_state = Arc::new(Mutex::new(HudControlState {
+        visible: true,
+        muted: false,
+    }));
+
     tauri::Builder::default()
-        .setup(|app| {
+        .manage(hud_state.clone())
+        .setup(move |app| {
             let handle = app.handle().clone();
             let state = Arc::new(Mutex::new(HoldState::default()));
             let (audio_tx, audio_rx) = mpsc::channel();
             start_audio_thread(audio_rx);
 
-            start_frame_loop(handle.clone(), state.clone(), audio_tx.clone());
-            start_keyboard_listener(handle.clone(), state.clone(), audio_tx.clone());
-            start_gamepad_listener(handle, state, audio_tx);
+            start_frame_loop(handle.clone(), state.clone(), hud_state.clone(), audio_tx.clone());
+            start_keyboard_listener(handle.clone(), state.clone(), hud_state.clone(), audio_tx.clone());
+            start_gamepad_listener(handle, state, hud_state, audio_tx);
 
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![hud_toggle, hud_mute_toggle])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

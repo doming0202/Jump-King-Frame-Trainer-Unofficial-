@@ -465,7 +465,7 @@ if(volumeSlider){
     masterGain = Number(volumeSlider.value) / 100; // 0.0 – 2.0
     saveNumber("jft_volume", masterGain);
     saveNumber("jft_volume_slider", Number(volumeSlider.value));
-    if(gainNode) gainNode.gain.value = soundMuted ? 0 : masterGain;
+    if(gainNode) gainNode.gain.value = appSoundMuted ? 0 : masterGain;
   });
 }
 
@@ -488,7 +488,7 @@ if (ticksEl && ticksEl.childElementCount === 0) {
 
 let masterGain = loadNumber("jft_volume", 1.0);
 let gainNode = null;
-let soundMuted = loadNumber("jft_sound_muted", 0) === 1;
+let appSoundMuted = loadNumber("jft_sound_muted", 0) === 1;
 
 /* ===== Audio ===== */
 let soundEnabled = true;
@@ -535,30 +535,30 @@ if(audioCtx){
 
 /* ===== ミュートトグル ===== */
 function applySoundState() {
-  soundEnabled = !soundMuted;
-  if (muteToggle) {
-    muteToggle.classList.toggle("muted", soundMuted);
-    muteToggle.textContent = soundMuted ? "🔇" : "🔊";
-  }
+  soundEnabled = !appSoundMuted;
   if (soundToggle) {
-    soundToggle.textContent = soundMuted ? "🔇" : "🔊";
-    soundToggle.classList.toggle("muted", soundMuted);
+    soundToggle.textContent = appSoundMuted ? "🔇" : "🔊";
+    soundToggle.classList.toggle("muted", appSoundMuted);
   }
 
   if (gainNode) {
-    gainNode.gain.value = soundMuted ? 0 : masterGain;
+    gainNode.gain.value = appSoundMuted ? 0 : masterGain;
   }
 }
 
 function toggleMute(){
-  soundMuted = !soundMuted;
-  saveNumber("jft_sound_muted", soundMuted ? 1 : 0);
+  appSoundMuted = !appSoundMuted;
+  saveNumber("jft_sound_muted", appSoundMuted ? 1 : 0);
   ensureAudioUnlocked();
   applySoundState();
 }
 
 if (muteToggle) {
-  muteToggle.addEventListener("click", toggleMute);
+  muteToggle.addEventListener("click", () => {
+    if (window.__TAURI__?.core?.invoke) {
+      window.__TAURI__.core.invoke("hud_mute_toggle");
+    }
+  });
 }
 
 /* ===== サウンドトグル ===== */
