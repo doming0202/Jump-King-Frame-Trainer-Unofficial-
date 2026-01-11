@@ -30,8 +30,8 @@
         "title": "Jump Frame Trainer",
         "url": "index.html",
 
-        "width": 900,
-        "height": 720,
+        "width": 920,
+        "height": 840,
         "resizable": true,
         "visible": true
       },
@@ -49,9 +49,9 @@
         "focusable": false,
         "resizable": false,
 
-        "width": 420,
-        "height": 120,
-        "x": 740,
+        "width": 360,
+        "height": 132,
+        "x": 700,
         "y": 20,
 
         "visible": true

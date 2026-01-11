@@ -19,11 +19,13 @@
     --sans: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", "Yu Gothic", sans-serif;
   }
 
-  html,body{
-    margin:0; padding:0;
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: fit-content;
+    height: fit-content;
     background: transparent;
-    overflow:hidden;　
-    user-select:none;
+    overflow: hidden;
   }
 
   .hud-root{
@@ -34,12 +36,18 @@
     padding:10px 12px;
     border-radius:10px;
 
-    background: var(--bg);
+    background: rgba(12,12,14,.48);
     backdrop-filter: blur(8px);
-    box-shadow: 0 0 0 1px var(--line);
+
+    /* 枠線完全撤去 */
+    outline: none;
+    box-shadow: none;
+
     color: var(--text);
     font-family: var(--sans);
     width: 360px;
+    height: 132px;
+    box-sizing: border-box;
   }
 
   .top{
@@ -82,7 +90,12 @@
     position:relative;
     height:16px;
     border-radius:8px;
-    box-shadow: 0 0 0 1px var(--line) inset;
+
+    /* 枠を描かない */
+    outline: none;
+    box-shadow: none;
+
+    background: rgba(255,255,255,.08); /* 背景で区切る */
     overflow:hidden;
   }
 
@@ -104,19 +117,21 @@
     inset:0;
     pointer-events:none;
   }
+
   .tick{
     position:absolute;
     top:0; bottom:0;
     width:1px;
     background: rgba(255,255,255,.18);
-    transform: translateX(-0.5px);
+    transform: none; /* ← 削除 */
   }
+
   .tick.major{
     width:2px;
     background: rgba(255,255,255,.35);
-    transform: translateX(-1px);
+    transform: none; /* ← 削除 */
   }
-
+                                    
   /* ラベル（6Fごとに数字） */
   .labels{
     display:flex;
