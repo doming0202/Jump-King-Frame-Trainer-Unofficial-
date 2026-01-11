@@ -282,11 +282,58 @@ body{
   white-space:nowrap;
 }
 
+/* ===== 左サイド HUDコントロール ===== */
+.hud-controls {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px 8px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.12);
+  backdrop-filter: blur(6px);
+}
+
+.hud-btn {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  cursor: pointer;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.08);
+  transition: background .15s, transform .1s, opacity .15s;
+}
+
+.hud-btn:hover {
+  background: rgba(255,255,255,0.18);
+  transform: scale(1.05);
+}
+
+.hud-btn.inactive {
+  opacity: .45;
+}
+
+.hud-btn.muted {
+  background: rgba(180,60,60,0.35);
+}
+
 </style>
 </head>
 
 <body>
 <div class="box">
+  <!-- 左サイド HUD 操作 -->
+  <div class="hud-controls">
+    <div id="hudToggle" class="hud-btn" title="HUD 表示切替">👁️</div>
+    <div id="muteToggle" class="hud-btn" title="ミュート">🔊</div>
+  </div>
 
   <div class="sound-control">
     <div id="soundToggle" class="sound-toggle" title="サウンド切替">🔊</div>
@@ -410,14 +457,16 @@ const markerEl   = document.getElementById("marker");
 const inputEl    = document.getElementById("input");
 const ticksEl    = document.getElementById("ticks");
 const soundToggle= document.getElementById("soundToggle");
+const hudToggle  = document.getElementById("hudToggle");
+const muteToggle = document.getElementById("muteToggle");
 const volumeSlider = document.getElementById("volumeSlider");
 if(volumeSlider){
   volumeSlider.value = loadNumber("jft_volume_slider", Number(volumeSlider.value));
   volumeSlider.addEventListener("input", () => {
     masterGain = Number(volumeSlider.value) / 100; // 0.0 – 2.0
-    if(gainNode) gainNode.gain.value = masterGain;
     saveNumber("jft_volume", masterGain);
     saveNumber("jft_volume_slider", Number(volumeSlider.value));
+    if(gainNode) gainNode.gain.value = soundMuted ? 0 : masterGain;
   });
 }
 
@@ -440,6 +489,8 @@ if (ticksEl && ticksEl.childElementCount === 0) {
 
 let masterGain = loadNumber("jft_volume", 1.0);
 let gainNode = null;
+let hudVisible = loadNumber("jft_hud_visible", 1) === 1;
+let soundMuted = loadNumber("jft_sound_muted", 0) === 1;
 
 /* ===== Audio ===== */
 let soundEnabled = true;
@@ -484,22 +535,40 @@ if(audioCtx){
   gainNode.connect(audioCtx.destination);
 }
 
+/* ===== ミュートトグル ===== */
+function applySoundState() {
+  soundEnabled = !soundMuted;
+  if (muteToggle) {
+    muteToggle.classList.toggle("muted", soundMuted);
+    muteToggle.textContent = soundMuted ? "🔇" : "🔊";
+  }
+  if (soundToggle) {
+    soundToggle.textContent = soundMuted ? "🔇" : "🔊";
+    soundToggle.classList.toggle("muted", soundMuted);
+  }
+
+  if (gainNode) {
+    gainNode.gain.value = soundMuted ? 0 : masterGain;
+  }
+}
+
+function toggleMute(){
+  soundMuted = !soundMuted;
+  saveNumber("jft_sound_muted", soundMuted ? 1 : 0);
+  ensureAudioUnlocked();
+  applySoundState();
+}
+
+if (muteToggle) {
+  muteToggle.addEventListener("click", toggleMute);
+}
+
 /* ===== サウンドトグル ===== */
 if (soundToggle) {
-  soundToggle.addEventListener("click", () => {
-    soundEnabled = !soundEnabled;
-    soundToggle.textContent = soundEnabled ? "🔊" : "🔇";
-    soundToggle.classList.toggle("muted", !soundEnabled);
-
-    // クリックはユーザー操作なので、ここで確実に解除できる
-    ensureAudioUnlocked();
-
-    // ★ 音量スライダーと整合させる
-    if (gainNode) {
-      gainNode.gain.value = soundEnabled ? masterGain : 0;
-    }
-  });
+  soundToggle.addEventListener("click", toggleMute);
 }
+
+applySoundState();
 
 /* ===== 30F 警告音設定 ===== */
 let warn30Freq = loadNumber("jft_warn30_hz", 300);        // 初期値
@@ -553,6 +622,31 @@ function loadNumber(key, fallback){
 function saveNumber(key, value){
   localStorage.setItem(key, String(value));
 }
+
+function applyHudVisible() {
+  const mainEl = document.querySelector(".main");
+  const zonesEl = document.querySelector(".zones");
+  const meterWrapEl = document.querySelector(".meter-wrap");
+
+  if (mainEl) mainEl.style.display = hudVisible ? "" : "none";
+  if (zonesEl) zonesEl.style.display = hudVisible ? "" : "none";
+  if (meterWrapEl) meterWrapEl.style.display = hudVisible ? "" : "none";
+
+  if (hudToggle) {
+    hudToggle.classList.toggle("inactive", !hudVisible);
+    hudToggle.textContent = hudVisible ? "👁️" : "🚫";
+  }
+}
+
+if (hudToggle) {
+  hudToggle.addEventListener("click", () => {
+    hudVisible = !hudVisible;
+    saveNumber("jft_hud_visible", hudVisible ? 1 : 0);
+    applyHudVisible();
+  });
+}
+
+applyHudVisible();
 function getZone(f){
   return ZONES.find(z => f >= z.min && f <= z.max) || null;
 }
