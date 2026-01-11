@@ -561,6 +561,17 @@ if (muteToggle) {
   });
 }
 
+if (window.__TAURI__?.event) {
+  window.__TAURI__.event.listen("hud-mute-changed", (e) => {
+    const muted = e.payload;
+
+    if (!muteToggle) return;
+
+    muteToggle.textContent = muted ? "🔇" : "🔊";
+    muteToggle.classList.toggle("muted", muted);
+  });
+}
+
 /* ===== サウンドトグル ===== */
 if (soundToggle) {
   soundToggle.addEventListener("click", toggleMute);

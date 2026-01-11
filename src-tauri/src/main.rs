@@ -320,9 +320,14 @@ fn hud_toggle(app: tauri::AppHandle, state: State<Arc<Mutex<HudControlState>>>) 
 }
 
 #[tauri::command]
-fn hud_mute_toggle(state: State<Arc<Mutex<HudControlState>>>) {
+fn hud_mute_toggle(
+    app: tauri::AppHandle,
+    state: State<Arc<Mutex<HudControlState>>>,
+) {
     let mut s = state.lock().unwrap();
     s.muted = !s.muted;
+
+    let _ = app.emit_to("main", "hud-mute-changed", s.muted);
 }
 
 // ===============================
