@@ -11,7 +11,7 @@ use serde::Serialize;
 
 use rdev::{listen, EventType, Key};
 use gilrs::{Gilrs, EventType as GilEvent, Button as GilButton};
-use rodio::{OutputStream, Sink, source::SineWave, Source};
+use rodio::{OutputStream, OutputStreamHandle, Sink, source::SineWave, Source};
 
 // ===============================
 // HUD Payload
@@ -69,19 +69,30 @@ impl Default for HoldState {
     }
 }
 
+struct AudioState {
+    _stream: OutputStream,
+    handle: OutputStreamHandle,
+}
+
+impl AudioState {
+    fn new() -> Self {
+        let (_stream, handle) =
+            OutputStream::try_default().expect("failed to init audio output");
+        Self { _stream, handle }
+    }
+}
+
 // ===============================
 // Sound Helper（JSと同思想）
 // ===============================
-fn play_beep(freq: u32, ms: u64) {
-    if let Ok((_stream, handle)) = OutputStream::try_default() {
-        if let Ok(sink) = Sink::try_new(&handle) {
-            sink.append(
-                SineWave::new(freq as f32)
-                    .take_duration(Duration::from_millis(ms))
-                    .amplify(0.20)
-            );
-            sink.detach();
-        }
+fn play_beep(audio: &AudioState, freq: u32, ms: u64) {
+    if let Ok(sink) = Sink::try_new(&audio.handle) {
+        sink.append(
+            SineWave::new(freq as f32)
+                .take_duration(Duration::from_millis(ms))
+                .amplify(0.20)
+        );
+        sink.detach();
     }
 }
 
@@ -99,7 +110,11 @@ fn emit_update(app: &AppHandle, frame: u32) {
 // ===============================
 // Frame Loop（60FPS基準）
 // ===============================
-fn start_frame_loop(app: AppHandle, state: Arc<Mutex<HoldState>>) {
+fn start_frame_loop(
+    app: AppHandle,
+    state: Arc<Mutex<HoldState>>,
+    audio: Arc<AudioState>,
+) {
     thread::spawn(move || {
         const FRAME_MS: f64 = 1000.0 / 60.0;
 
@@ -125,11 +140,11 @@ fn start_frame_loop(app: AppHandle, state: Arc<Mutex<HoldState>>) {
                             let zone = get_zone(frame_u);
                             if zone != s.last_zone {
                                 match zone {
-                                    Zone::Tap   => play_beep(220, 40),
-                                    Zone::Small => play_beep(260, 40),
-                                    Zone::Mid   => play_beep(300, 40),
-                                    Zone::Large => play_beep(340, 40),
-                                    Zone::Full  => play_beep(420, 60),
+                                    Zone::Tap   => play_beep(&audio, 220, 40),
+                                    Zone::Small => play_beep(&audio, 260, 40),
+                                    Zone::Mid   => play_beep(&audio, 300, 40),
+                                    Zone::Large => play_beep(&audio, 340, 40),
+                                    Zone::Full  => play_beep(&audio, 420, 60),
                                     Zone::None  => {}
                                 }
                                 s.last_zone = zone;
@@ -137,7 +152,7 @@ fn start_frame_loop(app: AppHandle, state: Arc<Mutex<HoldState>>) {
 
                             // ===== 30F 警告音（1回のみ）=====
                             if frame_u >= 30 && !s.played_30f {
-                                play_beep(350, 80);
+                                play_beep(&audio, 350, 80);
                                 s.played_30f = true;
                             }
                         }
@@ -157,6 +172,7 @@ fn start_frame_loop(app: AppHandle, state: Arc<Mutex<HoldState>>) {
 fn start_keyboard_listener(
     app: AppHandle,
     state: Arc<Mutex<HoldState>>,
+    audio: Arc<AudioState>,
 ) {
     thread::spawn(move || {
         let callback = move |event: rdev::Event| {
@@ -182,7 +198,7 @@ fn start_keyboard_listener(
                                 (elapsed_ms / (1000.0 / 60.0)).round() as u32;
 
                             emit_update(&app, frame);
-                            play_beep(600, 100); // final音
+                            play_beep(&audio, 600, 100); // final音
                         }
 
                         s.holding = false;
@@ -206,6 +222,7 @@ fn start_keyboard_listener(
 fn start_gamepad_listener(
     app: AppHandle,
     state: Arc<Mutex<HoldState>>,
+    audio: Arc<AudioState>,
 ) {
     thread::spawn(move || {
         let mut gilrs = Gilrs::new().unwrap();
@@ -234,7 +251,7 @@ fn start_gamepad_listener(
                                     (elapsed_ms / (1000.0 / 60.0)).round() as u32;
 
                                 emit_update(&app, frame);
-                                play_beep(600, 100); // final音
+                                play_beep(&audio, 600, 100); // final音
                             }
 
                             s.holding = false;
@@ -261,10 +278,11 @@ fn main() {
         .setup(|app| {
             let handle = app.handle().clone();
             let state = Arc::new(Mutex::new(HoldState::default()));
+            let audio = Arc::new(AudioState::new());
 
-            start_frame_loop(handle.clone(), state.clone());
-            start_keyboard_listener(handle.clone(), state.clone());
-            start_gamepad_listener(handle, state);
+            start_frame_loop(handle.clone(), state.clone(), audio.clone());
+            start_keyboard_listener(handle.clone(), state.clone(), audio.clone());
+            start_gamepad_listener(handle, state, audio);
 
             Ok(())
         })
