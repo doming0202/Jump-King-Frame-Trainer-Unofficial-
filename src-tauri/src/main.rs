@@ -4,6 +4,24 @@ use std::thread;
 use tauri::{AppHandle, Manager, Emitter};
 use rdev::{listen, EventType, Button};
 
+#[tauri::command]
+fn hud_progress(app: AppHandle, frame: u32) {
+    if let Some(w) = app.get_webview_window("hud") {
+        let _ = w.emit("hud-progress", serde_json::json!({
+            "frame": frame
+        }));
+    }
+}
+
+#[tauri::command]
+fn hud_update(app: AppHandle, frame: u32) {
+    if let Some(w) = app.get_webview_window("hud") {
+        let _ = w.emit("hud-update", serde_json::json!({
+            "frame": frame
+        }));
+    }
+}
+
 fn start_global_input_listener(app: AppHandle) {
     thread::spawn(move || {
         let mut holding = false;
@@ -64,6 +82,10 @@ fn main() {
 
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![
+            hud_progress,
+            hud_update
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
