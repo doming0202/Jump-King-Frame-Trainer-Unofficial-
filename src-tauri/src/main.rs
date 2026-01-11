@@ -1,27 +1,30 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::thread;
-use tauri::{AppHandle, Manager, Emitter};
+use tauri::{AppHandle, Manager};
+use tauri::Emitter;
 use rdev::{listen, EventType, Button};
+use serde::Serialize;
 
-#[tauri::command]
-fn hud_progress(app: AppHandle, frame: u32) {
-    if let Some(w) = app.get_webview_window("hud") {
-        let _ = w.emit("hud-progress", serde_json::json!({
-            "frame": frame
-        }));
-    }
+// ===============================
+// HUD payload
+// ===============================
+#[derive(Serialize, Clone)]
+struct Payload {
+    frame: u32,
 }
 
+// ===============================
+// HUD update command（確定値のみ）
+// ===============================
 #[tauri::command]
 fn hud_update(app: AppHandle, frame: u32) {
-    if let Some(w) = app.get_webview_window("hud") {
-        let _ = w.emit("hud-update", serde_json::json!({
-            "frame": frame
-        }));
-    }
+    let _ = app.emit_to("hud", "hud-update", Payload { frame });
 }
 
+// ===============================
+// Global input listener（既存）
+// ===============================
 fn start_global_input_listener(app: AppHandle) {
     thread::spawn(move || {
         let mut holding = false;
@@ -62,28 +65,21 @@ fn start_global_input_listener(app: AppHandle) {
     });
 }
 
+// ===============================
+// main
+// ===============================
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
             let handle = app.handle().clone();
 
-            // ① 既存のグローバル入力リスナー（変更なし）
-            start_global_input_listener(handle.clone());
-
-            // ② HUD ウィンドウの存在確認（Discord方式）
-            // tauri.conf.json 側で定義されていれば、ここで取得できる
-            if let Some(_hud) = app.get_webview_window("hud") {
-                // 今は何もしない（表示専用HUD）
-                // 将来ここで初期イベントを送れる
-                // let _ = _hud.emit("hud-init", ());
-            } else {
-                eprintln!("HUD window not found");
-            }
+            // グローバル入力開始（変更なし）
+            start_global_input_listener(handle);
 
             Ok(())
         })
+        // ★ invoke 経路を有効化（ここが最重要）
         .invoke_handler(tauri::generate_handler![
-            hud_progress,
             hud_update
         ])
         .run(tauri::generate_context!())

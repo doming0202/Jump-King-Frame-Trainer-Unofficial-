@@ -1,134 +1,314 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<title>Jump Frame HUD</title>
-
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Jump Frame Trainer HUD</title>
 <style>
-html, body {
-  margin: 0;
-  padding: 0;
-  background: transparent;
-  overflow: hidden;
-  user-select: none;
-  pointer-events: none;
-  font-family: system-ui, sans-serif;
-}
+  :root{
+    --bg: rgba(12, 12, 14, .42);
+    --line: rgba(255,255,255,.16);
+    --text: rgba(255,255,255,.92);
+    --muted: rgba(255,255,255,.65);
 
-/* ===== HUD Root ===== */
-#hud {
-  width: 420px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(6px);
-}
+    --ok: rgba(125,255,178,.95);
+    --warn: rgba(255,200,80,.95);
+    --danger: rgba(255,107,107,.95);
 
-/* ===== Frame Counter ===== */
-#frame {
-  text-align: center;
-  font-size: 48px;
-  font-weight: 700;
-  line-height: 1;
-  color: #ffffff;
-}
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --sans: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", "Yu Gothic", sans-serif;
+  }
 
-/* ===== Meter ===== */
-.meter {
-  position: relative;
-  margin-top: 8px;
-  height: 14px;
-  border-radius: 7px;
-  background: rgba(255, 255, 255, 0.15);
-  overflow: hidden;
-}
+  html,body{
+    margin:0; padding:0;
+    background: transparent;
+    overflow:hidden;
+    user-select:none;
+  }
 
-/* Marker */
-#marker {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: #ffffff;
-}
+  .hud-root{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
 
-/* Danger zone overlay (30–36f) */
-.danger {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: calc(30 / 36 * 100%);
-  width: calc(6 / 36 * 100%);
-  background: linear-gradient(
-    90deg,
-    rgba(255, 160, 80, 0.35),
-    rgba(255, 80, 80, 0.55)
-  );
-}
+    padding:10px 12px;
+    border-radius:10px;
+
+    background: var(--bg);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 0 0 1px var(--line);
+    color: var(--text);
+    font-family: var(--sans);
+    width: 360px;
+  }
+
+  .top{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:12px;
+  }
+
+  .title{
+    font-size:13px;
+    letter-spacing:.02em;
+    color: var(--muted);
+  }
+
+  .frame{
+    font-family: var(--mono);
+    font-size:28px;
+    line-height:1;
+    font-weight:700;
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+  }
+
+  .frame small{
+    font-size:12px;
+    color: var(--muted);
+    font-weight:600;
+  }
+
+  /* メーター */
+  .meter-wrap{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+
+  .meter{
+    position:relative;
+    height:16px;
+    border-radius:8px;
+    box-shadow: 0 0 0 1px var(--line) inset;
+    overflow:hidden;
+  }
+
+  .fill{
+    position:absolute;
+    top:0; left:0; bottom:0;
+    width:0%;
+    border-radius:8px;
+    background: var(--ok);
+    transition: width 0.03s linear; /* progressは超短く */
+  }
+
+  .fill.warn{ background: var(--warn); }
+  .fill.danger{ background: var(--danger); }
+
+  /* tick: 1F刻み（細）/ 6F刻み（太） */
+  .ticks{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+  }
+  .tick{
+    position:absolute;
+    top:0; bottom:0;
+    width:1px;
+    background: rgba(255,255,255,.18);
+    transform: translateX(-0.5px);
+  }
+  .tick.major{
+    width:2px;
+    background: rgba(255,255,255,.35);
+    transform: translateX(-1px);
+  }
+
+  /* ラベル（6Fごとに数字） */
+  .labels{
+    display:flex;
+    justify-content:space-between;
+    font-family: var(--mono);
+    font-size:11px;
+    color: var(--muted);
+    padding:0 2px;
+  }
+
+  /* 確定表示のアクセント（hud-update受信時） */
+  .final-badge{
+    font-size:11px;
+    color: var(--muted);
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .dot{
+    width:8px; height:8px;
+    border-radius:999px;
+    background: rgba(255,255,255,.22);
+  }
+  .dot.final{
+    background: rgba(255,255,255,.75);
+  }
+
+  .debug{
+    display:none;
+    font-family: var(--mono);
+    font-size:10px;
+    color: rgba(255,255,255,.55);
+  }
 </style>
 </head>
 
 <body>
-  <div id="hud">
-    <div id="frame">0</div>
-    <div class="meter">
-      <div class="danger"></div>
-      <div id="marker"></div>
+  <div class="hud-root">
+    <div class="top">
+      <div class="title">Jump Frame Trainer HUD</div>
+
+      <div class="frame">
+        <span id="frameValue">--</span>
+        <small>F</small>
+      </div>
     </div>
+
+    <div class="meter-wrap">
+      <div class="meter" id="meter">
+        <div class="fill" id="fill"></div>
+        <div class="ticks" id="ticks"></div>
+      </div>
+
+      <div class="labels" id="labels"></div>
+
+      <div class="final-badge">
+        <span class="dot" id="finalDot"></span>
+        <span id="finalText">progress</span>
+      </div>
+    </div>
+
+    <div class="debug" id="debug"></div>
   </div>
 
 <script>
-/*
-  HUD は表示専用
-  - 入力は取らない
-  - main window からのイベントを描画するだけ
-*/
+/**
+ * ===== HUD 設定（main側と合わせる） =====
+ * MAX: メーター最大（例：36F）
+ * MAJOR: 太いtick間隔（例：6F）
+ * WARN_FROM: 30F以上の色警告
+ */
+const MAX = 36;
+const MAJOR = 6;
+const WARN_FROM = 30;
 
-const MAX_FRAME = 36;
-const frameEl = document.getElementById("frame");
-const markerEl = document.getElementById("marker");
+// DOM
+const elFrame  = document.getElementById("frameValue");
+const elFill   = document.getElementById("fill");
+const elTicks  = document.getElementById("ticks");
+const elLabels = document.getElementById("labels");
+const elFinalDot  = document.getElementById("finalDot");
+const elFinalText = document.getElementById("finalText");
+const elDebug = document.getElementById("debug");
 
-function clamp(n, min, max) {
-  return Math.max(min, Math.min(max, n));
-}
+// 状態（イベント駆動なので “受け取った瞬間に描画”）
+let lastProgressFrame = null;
+let lastFinalFrame = null;
 
-function updateHUD(frame) {
-  const f = clamp(Number(frame) || 0, 0, MAX_FRAME);
-
-  frameEl.textContent = String(f);
-
-  // Marker position (0–100%)
-  markerEl.style.left = `${(f / MAX_FRAME) * 100}%`;
-
-  // Color by zone
-  if (f >= 30)      frameEl.style.color = "#ff6a6a";
-  else if (f >= 25) frameEl.style.color = "#ff9f6a";
-  else if (f >= 14) frameEl.style.color = "#7dff9c";
-  else if (f >= 8)  frameEl.style.color = "#6ab7ff";
-  else              frameEl.style.color = "#caa7ff";
-}
-
-/* ===== Tauri Events (確実に登録) ===== */
-(async () => {
-  const ev = window.__TAURI__?.event;
-  if (!ev?.listen) {
-    console.warn("[HUD] __TAURI__.event.listen not available");
-    return;
+// tick 生成（初回のみ）
+function buildTicks(){
+  elTicks.innerHTML = "";
+  for(let f=0; f<=MAX; f++){
+    const x = (f / MAX) * 100;
+    const div = document.createElement("div");
+    div.className = "tick" + ((f % MAJOR === 0) ? " major" : "");
+    div.style.left = x + "%";
+    elTicks.appendChild(div);
   }
 
-  // リアルタイム進捗（毎フレーム）
-  await ev.listen("hud-progress", (e) => {
-    updateHUD(e.payload?.frame);
+  // 6Fごとのラベル（0,6,12,...,MAX）
+  elLabels.innerHTML = "";
+  const labelCount = Math.floor(MAX / MAJOR);
+  // 端の見え方を揃えるため、flexで両端揃え
+  // 0 と MAX は常に出す
+  const points = [];
+  for(let f=0; f<=MAX; f+=MAJOR) points.push(f);
+  if(points[points.length-1] !== MAX) points.push(MAX);
+
+  // labelsは等間隔に並べたいので “points数” に合わせて span を作る
+  for(const f of points){
+    const s = document.createElement("span");
+    s.textContent = String(f);
+    elLabels.appendChild(s);
+  }
+}
+
+function clampFrame(frame){
+  if (typeof frame !== "number" || Number.isNaN(frame)) return 0;
+  if (frame < 0) return 0;
+  if (frame > MAX) return MAX;
+  return frame;
+}
+
+function applyColorClass(frame){
+  elFill.classList.remove("warn", "danger");
+
+  if(frame >= WARN_FROM){
+    // 30以上は danger 寄りにしたい場合
+    elFill.classList.add("danger");
+  }else if(frame >= WARN_FROM - 6){
+    // 例：24〜29 を warn にしたいなら
+    elFill.classList.add("warn");
+  }
+}
+
+function render(frame, mode){
+  const f = clampFrame(frame);
+  const pct = (f / MAX) * 100;
+
+  elFrame.textContent = String(f).padStart(2, "0");
+  elFill.style.width = pct + "%";
+  applyColorClass(f);
+
+  if(mode === "final"){
+    elFinalDot.classList.add("final");
+    elFinalText.textContent = "final";
+  }else{
+    elFinalDot.classList.remove("final");
+    elFinalText.textContent = "progress";
+  }
+
+  // デバッグ用（必要なら display:block に）
+  // elDebug.textContent = `mode=${mode} frame=${f} raw=${frame}`;
+}
+
+buildTicks();
+render(0, "progress");
+
+function flashDebug(text){
+  elDebug.style.display = "block";
+  elDebug.textContent = text;
+  elDebug.style.color = "#7dffb2";
+}
+
+/**
+ * ===== イベント受信（完全イベント駆動） =====
+ * - hud-progress: リアルタイム描画
+ * - hud-update:   確定描画
+ */
+function setupListeners(){
+  const t = window.__TAURI__.event;
+
+  // progress
+  t.listen("hud-progress", (e) => {
+    const frame = e?.payload?.frame;
+    flashDebug("progress: " + frame);
+    render(frame, "progress");
   });
 
-  // 最終確定（必要なら）
-  await ev.listen("hud-update", (e) => {
-    updateHUD(e.payload?.frame);
+  // final
+  t.listen("hud-update", (e) => {
+    const frame = e?.payload?.frame;
+    flashDebug("update: " + frame);
+    render(frame, "final");
   });
 
-  // 初期化（任意）
-  updateHUD(0);
-})();
+  setTimeout(() => {
+    flashDebug("HUD JS alive");
+  }, 500);
+}
+
+setupListeners();
 </script>
 </body>
 </html>

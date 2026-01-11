@@ -384,16 +384,7 @@ body{
 </div>
 
 <script>
-
-if (window.__TAURI__?.event) {
-  window.__TAURI__.event.listen("hold-start", (e) => {
-    startHold(`global:${e.payload}`);
-  });
-
-  window.__TAURI__.event.listen("hold-end", () => {
-    endHold();
-  });
-}
+console.log("[BOOT] JS start");
 
 /* ===== ロジック（完全修正版） ===== */
 const LOGIC_FPS = 60;
@@ -587,7 +578,6 @@ function render(){
     const f  = (performance.now() - startTime) / FRAME_MS;
     const fi = Math.max(0, Math.min(MAX, Math.round(f)));
 
-    // ★ 30F 到達時の追加音（1回だけ）
     if (fi === 30 && !played30f) {
       beep(warn30Freq, 0.08, 0.1);
       played30f = true;
@@ -612,20 +602,12 @@ function render(){
         lastZone = z.k; 
       }
     }
-
-    // ★ HUDへ毎フレーム送信
-    if (window.__TAURI__?.invoke) {
-      window.__TAURI__.invoke("hud_progress", { frame: fi });
-    }
   }
-
 
   requestAnimationFrame(render);
 }
 
- 
 requestAnimationFrame(render);
-
 
 /* ===== 入力 ===== */
 function startHold(label){
@@ -640,20 +622,23 @@ function startHold(label){
 }
 
 function endHold(){
+  console.log("[endHold] called");
+
   if(!holding) return;
 
   const fi = Math.max(
     0,
     Math.min(MAX, Math.round((performance.now() - startTime) / FRAME_MS))
   );
+
   holding = false;
 
   history.push(fi);
   if(history.length > 5) history.shift();
   updateAverage();
 
-  if (window.__TAURI__?.invoke) {
-    window.__TAURI__.invoke("hud_update", { frame: fi });
+  if (window.__TAURI__?.event) {
+    window.__TAURI__.event.emit("hud-update", { frame: fi });
   }
 }
  

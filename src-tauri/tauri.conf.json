@@ -18,35 +18,36 @@
         "url": "index.html",
         "width": 900,
         "height": 720,
-        "resizable": true,
         "visible": true
       },
-
       {
         "label": "hud",
         "title": "Jump Frame HUD",
         "url": "hud.html",
-
         "decorations": false,
         "transparent": true,
-
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "focusable": false,
         "resizable": false,
-
         "width": 420,
         "height": 120,
-
         "x": 740,
         "y": 20,
-
         "visible": true
       }
-    ]
-  },
+    ],
 
-  "bundle": {
-    "active": true
+    "security": {
+      "capabilities": [
+        {
+          "identifier": "event-emit",
+          "permissions": [
+            "core:event:allow-emit",
+            "core:event:allow-listen"
+          ]
+        }
+      ]
+    }
   }
 }
