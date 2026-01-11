@@ -48,7 +48,20 @@ fn main() {
     tauri::Builder::default()
         .setup(|app| {
             let handle = app.handle().clone();
-            start_global_input_listener(handle);
+
+            // ① 既存のグローバル入力リスナー（変更なし）
+            start_global_input_listener(handle.clone());
+
+            // ② HUD ウィンドウの存在確認（Discord方式）
+            // tauri.conf.json 側で定義されていれば、ここで取得できる
+            if let Some(_hud) = app.get_webview_window("hud") {
+                // 今は何もしない（表示専用HUD）
+                // 将来ここで初期イベントを送れる
+                // let _ = _hud.emit("hud-init", ());
+            } else {
+                eprintln!("HUD window not found");
+            }
+
             Ok(())
         })
         .run(tauri::generate_context!())

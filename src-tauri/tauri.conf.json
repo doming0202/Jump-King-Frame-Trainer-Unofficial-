@@ -3,34 +3,50 @@
   "productName": "jump-frame-trainer",
   "version": "0.1.0",
   "identifier": "com.domin.jump-frame-trainer",
+
   "build": {
-    "beforeDevCommand": "npm run dev",
-    "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
-    "frontendDist": "../dist"
+    "frontendDist": "../public"
   },
+
   "app": {
     "withGlobalTauri": true,
+
     "windows": [
       {
-        "title": "jump-frame-trainer",
-        "width": 800,
-        "height": 600
+        "label": "main",
+        "title": "Jump Frame Trainer",
+        "url": "index.html",
+        "width": 900,
+        "height": 720,
+        "resizable": true,
+        "visible": true
+      },
+
+      {
+        "label": "hud",
+        "title": "Jump Frame HUD",
+        "url": "hud.html",
+
+        "decorations": false,
+        "transparent": true,
+
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "focusable": false,
+        "resizable": false,
+
+        "width": 420,
+        "height": 120,
+
+        "x": 740,
+        "y": 20,
+
+        "visible": true
       }
-    ],
-    "security": {
-      "csp": null
-    }
-  },
-  "bundle": {
-    "active": true,
-    "targets": "all",
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
     ]
+  },
+
+  "bundle": {
+    "active": true
   }
 }

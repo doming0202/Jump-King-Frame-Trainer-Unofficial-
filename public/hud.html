@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>Jump Frame HUD</title>
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+  pointer-events: none;
+  font-family: system-ui, sans-serif;
+}
+
+/* ===== HUD Root ===== */
+#hud {
+  width: 420px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(6px);
+}
+
+/* ===== Frame Counter ===== */
+#frame {
+  text-align: center;
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1;
+  color: #ffffff;
+}
+
+/* ===== Meter ===== */
+.meter {
+  position: relative;
+  margin-top: 8px;
+  height: 14px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+/* Marker */
+#marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ffffff;
+}
+
+/* Danger zone overlay (30–36f) */
+.danger {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(30 / 36 * 100%);
+  width: calc(6 / 36 * 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 160, 80, 0.35),
+    rgba(255, 80, 80, 0.55)
+  );
+}
+</style>
+</head>
+
+<body>
+  <div id="hud">
+    <div id="frame">0</div>
+    <div class="meter">
+      <div class="danger"></div>
+      <div id="marker"></div>
+    </div>
+  </div>
+
+<script>
+/*
+  HUD は表示専用
+  - 入力は取らない
+  - main window からのイベントを描画するだけ
+*/
+
+const MAX_FRAME = 36;
+const frameEl = document.getElementById("frame");
+const markerEl = document.getElementById("marker");
+
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function updateHUD(frame) {
+  const f = clamp(Number(frame) || 0, 0, MAX_FRAME);
+
+  frameEl.textContent = String(f);
+
+  // Marker position (0–100%)
+  markerEl.style.left = `${(f / MAX_FRAME) * 100}%`;
+
+  // Color by zone
+  if (f >= 30)      frameEl.style.color = "#ff6a6a";
+  else if (f >= 25) frameEl.style.color = "#ff9f6a";
+  else if (f >= 14) frameEl.style.color = "#7dff9c";
+  else if (f >= 8)  frameEl.style.color = "#6ab7ff";
+  else              frameEl.style.color = "#caa7ff";
+}
+
+/* ===== Tauri Events (確実に登録) ===== */
+(async () => {
+  const ev = window.__TAURI__?.event;
+  if (!ev?.listen) {
+    console.warn("[HUD] __TAURI__.event.listen not available");
+    return;
+  }
+
+  // リアルタイム進捗（毎フレーム）
+  await ev.listen("hud-progress", (e) => {
+    updateHUD(e.payload?.frame);
+  });
+
+  // 最終確定（必要なら）
+  await ev.listen("hud-update", (e) => {
+    updateHUD(e.payload?.frame);
+  });
+
+  // 初期化（任意）
+  updateHUD(0);
+})();
+</script>
+</body>
+</html>
